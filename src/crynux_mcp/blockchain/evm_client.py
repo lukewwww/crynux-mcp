@@ -7,8 +7,34 @@ from eth_account.signers.local import LocalAccount
 from web3 import HTTPProvider, Web3
 from web3.exceptions import TransactionNotFound
 
-from crynux_mcp.blockchain.schemas import BalanceResult, TransferResult, Unit, normalize_unit, parse_amount_to_wei
+from crynux_mcp.blockchain.schemas import (
+    BalanceResult,
+    BeneficialAddressResult,
+    SetBeneficialAddressResult,
+    TransferResult,
+    Unit,
+    normalize_unit,
+    parse_amount_to_wei,
+)
 from crynux_mcp.config.loader import ChainConfig
+
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+BENEFICIAL_ADDRESS_ABI: list[dict[str, Any]] = [
+    {
+        "inputs": [{"internalType": "address", "name": "nodeAddress", "type": "address"}],
+        "name": "getBenefitAddress",
+        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [{"internalType": "address", "name": "benefitAddress", "type": "address"}],
+        "name": "setBenefitAddress",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
+]
 
 
 class EvmClient:
@@ -80,6 +106,61 @@ class EvmClient:
             chain_id=self.chain.chain_id,
         )
 
+    def get_beneficial_address(self, node_address: str) -> BeneficialAddressResult:
+        node_checksum = self._validate_address(node_address)
+        contract_address, contract = self._get_beneficial_contract()
+        beneficial_address = contract.functions.getBenefitAddress(node_checksum).call()
+        beneficial_checksum = self._validate_address(str(beneficial_address))
+        is_set = beneficial_checksum.lower() != ZERO_ADDRESS.lower()
+        return BeneficialAddressResult(
+            network=self.chain.network_key,
+            node_address=node_checksum,
+            beneficial_address=beneficial_checksum,
+            is_set=is_set,
+            contract_address=contract_address,
+            chain_id=self.chain.chain_id,
+        )
+
+    def set_beneficial_address(
+        self,
+        private_key: str,
+        beneficial_address: str,
+        gas_price_wei: int | None = None,
+        gas_limit: int | None = None,
+    ) -> SetBeneficialAddressResult:
+        account = self._validate_private_key(private_key)
+        beneficial_checksum = self._validate_address(beneficial_address)
+        contract_address, contract = self._get_beneficial_contract()
+
+        provider_chain_id = int(self.w3.eth.chain_id)
+        if provider_chain_id != self.chain.chain_id:
+            raise ValueError(
+                f"CHAIN_ID_MISMATCH: provider chain_id is {provider_chain_id}, expected {self.chain.chain_id}."
+            )
+
+        nonce = self.w3.eth.get_transaction_count(account.address, block_identifier="pending")
+        effective_gas_price = gas_price_wei or int(self.w3.eth.gas_price)
+        tx: dict[str, Any] = contract.functions.setBenefitAddress(beneficial_checksum).build_transaction(
+            {
+                "chainId": self.chain.chain_id,
+                "from": account.address,
+                "nonce": int(nonce),
+                "gasPrice": int(effective_gas_price),
+            }
+        )
+        tx["gas"] = int(gas_limit) if gas_limit else int(self.w3.eth.estimate_gas(tx))
+
+        signed = account.sign_transaction(tx)
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction).hex()
+        return SetBeneficialAddressResult(
+            network=self.chain.network_key,
+            node_address=account.address,
+            beneficial_address=beneficial_checksum,
+            tx_hash=tx_hash,
+            contract_address=contract_address,
+            chain_id=self.chain.chain_id,
+        )
+
     def get_transaction_receipt(self, tx_hash: str) -> dict[str, Any]:
         try:
             receipt = self.w3.eth.get_transaction_receipt(tx_hash)
@@ -102,3 +183,11 @@ class EvmClient:
             return Account.from_key(raw)
         except Exception as exc:  # noqa: BLE001
             raise ValueError("INVALID_PRIVATE_KEY: private key is invalid.") from exc
+
+    def _get_beneficial_contract(self) -> tuple[str, Any]:
+        raw_address = str(self.chain.contracts.get("beneficial_address", "")).strip()
+        if not raw_address:
+            raise ValueError("MISSING_CONTRACT_ADDRESS: beneficial_address contract is not configured.")
+        contract_address = self._validate_address(raw_address)
+        contract = self.w3.eth.contract(address=contract_address, abi=BENEFICIAL_ADDRESS_ABI)
+        return contract_address, contract

@@ -1,11 +1,12 @@
-# crynux-mcp
+Crynux MCP Server
 
-Python MCP server for Crynux EVM L2 blockchain operations.
+MCP server for Crynux Network operations.
 
 ## Scope
 
 - Native CNX balance query on Crynux EVM networks
 - Native CNX transfer signed by a private key from local system keychain
+- Beneficial address query and on-chain update
 - Relay API integration is not implemented yet
 
 ## Spec and transport
@@ -22,6 +23,14 @@ Query the native CNX balance for an EVM address on a configured Crynux network.
 ### `transfer_native`
 
 Send native CNX from the local signer wallet to a recipient EVM address.
+
+### `get_beneficial_address`
+
+Query the configured beneficial address for an operational EVM address.
+
+### `set_beneficial_address`
+
+Submit an on-chain transaction to set a beneficial address.
 
 ### `create_key`
 
@@ -155,6 +164,8 @@ In your AI client, check MCP tool list and confirm these tools appear:
 
 - `get_balance`
 - `transfer_native`
+- `get_beneficial_address`
+- `set_beneficial_address`
 
 ### Step 7) First tool calls
 
@@ -171,6 +182,17 @@ Example: send native CNX
 - `to`: recipient EVM address
 - `amount`: for example `0.1`
 - `unit`: `ether`
+
+Example: query beneficial address
+
+- `network`: `dymension`
+- `node_address`: your operational EVM address
+
+Example: set beneficial address
+
+- `network`: `dymension`
+- `key_name`: `main` (optional, uses default local key if omitted)
+- `beneficial_address`: your payout EVM address
 
 Signer key source for transfer:
 

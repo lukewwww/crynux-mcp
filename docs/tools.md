@@ -36,6 +36,37 @@ Output fields:
 - `tx_hash`
 - `chain_id`
 
+## `get_beneficial_address`
+
+Inputs:
+- `network`: optional (`dymension` or `near`). Defaults to configured default network.
+- `node_address`: operational EVM address to query.
+
+Output fields:
+- `network`
+- `node_address`
+- `beneficial_address`
+- `is_set`: `true` when beneficial address is not zero address.
+- `contract_address`
+- `chain_id`
+
+## `set_beneficial_address`
+
+Inputs:
+- `network`: optional (`dymension` or `near`). Defaults to configured default network.
+- `key_name`: optional signer key name. Uses default local key if omitted.
+- `beneficial_address`: target beneficial EVM address.
+- `gas_price_wei`: optional override.
+- `gas_limit`: optional override.
+
+Output fields:
+- `network`
+- `node_address`: signer address that submits the transaction.
+- `beneficial_address`
+- `tx_hash`
+- `contract_address`
+- `chain_id`
+
 ## `create_key`
 
 Inputs:

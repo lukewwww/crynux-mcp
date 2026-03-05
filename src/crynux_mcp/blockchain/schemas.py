@@ -28,6 +28,26 @@ class TransferResult:
     chain_id: int
 
 
+@dataclass(frozen=True)
+class BeneficialAddressResult:
+    network: str
+    node_address: str
+    beneficial_address: str
+    is_set: bool
+    contract_address: str
+    chain_id: int
+
+
+@dataclass(frozen=True)
+class SetBeneficialAddressResult:
+    network: str
+    node_address: str
+    beneficial_address: str
+    tx_hash: str
+    contract_address: str
+    chain_id: int
+
+
 def normalize_unit(unit: str | None) -> Unit:
     if unit is None:
         return "ether"

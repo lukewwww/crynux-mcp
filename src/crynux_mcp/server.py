@@ -88,6 +88,49 @@ def handle_transfer_native(
         ) from exc
 
 
+def handle_get_beneficial_address(network: str | None, node_address: str) -> dict[str, Any]:
+    try:
+        chain = registry.resolve(network)
+        client = EvmClient(chain)
+        result = client.get_beneficial_address(node_address=node_address)
+        return _to_response_payload(result)
+    except Exception as exc:  # noqa: BLE001
+        raise _execution_error(exc, {"network": network, "node_address": node_address}) from exc
+
+
+def handle_set_beneficial_address(
+    network: str | None,
+    beneficial_address: str,
+    key_name: str | None = None,
+    gas_price_wei: int | None = None,
+    gas_limit: int | None = None,
+) -> dict[str, Any]:
+    private_key: str | None = None
+    try:
+        private_key = get_private_key(name=key_name)
+        chain = registry.resolve(network)
+        client = EvmClient(chain)
+        result = client.set_beneficial_address(
+            private_key=private_key,
+            beneficial_address=beneficial_address,
+            gas_price_wei=gas_price_wei,
+            gas_limit=gas_limit,
+        )
+        return _to_response_payload(result)
+    except Exception as exc:  # noqa: BLE001
+        raise _execution_error(
+            exc,
+            {
+                "network": network,
+                "key_name": key_name,
+                "private_key": private_key,
+                "beneficial_address": beneficial_address,
+                "gas_price_wei": gas_price_wei,
+                "gas_limit": gas_limit,
+            },
+        ) from exc
+
+
 @mcp.tool()
 def get_balance(network: str | None, address: str, unit: str | None = None) -> dict[str, Any]:
     """Get native CNX balance on a selected Crynux EVM network."""
@@ -111,6 +154,30 @@ def transfer_native(
         amount=amount,
         key_name=key_name,
         unit=unit,
+        gas_price_wei=gas_price_wei,
+        gas_limit=gas_limit,
+    )
+
+
+@mcp.tool()
+def get_beneficial_address(network: str | None, node_address: str) -> dict[str, Any]:
+    """Get beneficial address for an operational node wallet."""
+    return handle_get_beneficial_address(network=network, node_address=node_address)
+
+
+@mcp.tool()
+def set_beneficial_address(
+    network: str | None,
+    beneficial_address: str,
+    key_name: str | None = None,
+    gas_price_wei: int | None = None,
+    gas_limit: int | None = None,
+) -> dict[str, Any]:
+    """Set beneficial address using a named key or default local key."""
+    return handle_set_beneficial_address(
+        network=network,
+        beneficial_address=beneficial_address,
+        key_name=key_name,
         gas_price_wei=gas_price_wei,
         gas_limit=gas_limit,
     )
