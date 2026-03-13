@@ -11,6 +11,7 @@ MCP server for Crynux Network operations, designed for LLM clients (such as Curs
 ### Blockchain
 
 - Native CNX balance query on Crynux L2 networks
+- Latest block height query on Crynux L2 networks
 - Native CNX transfer
 - Beneficial address query and on-chain update
 - Node staking query
